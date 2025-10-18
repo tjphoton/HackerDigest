@@ -8,9 +8,12 @@ import { NonRetriableError } from "inngest";
 import { z } from "zod";
 
 import { sharedPostgresStorage } from "./storage";
-import { inngest, inngestServe } from "./inngest";
-import { exampleWorkflow } from "./workflows/exampleWorflow";
-import { exampleAgent } from "./agents/exampleAgent";
+import { inngest, inngestServe, registerCronWorkflow } from "./inngest";
+import { hackerNewsDigestWorkflow } from "./workflows/hackerNewsDigestWorkflow";
+import { digestAgent } from "./agents/digestAgent";
+import { fetchHackerNewsRss } from "./tools/fetchHackerNewsRss";
+import { fetchArticleContent } from "./tools/fetchArticleContent";
+import { sendEmailViaResend } from "./tools/sendEmailViaResend";
 
 class ProductionPinoLogger extends MastraLogger {
   protected logger: pino.Logger;
@@ -53,17 +56,28 @@ class ProductionPinoLogger extends MastraLogger {
   }
 }
 
+// Register the workflow as a cron job to run daily at 9 AM
+// Use environment variables for timezone and cron expression
+registerCronWorkflow(
+  `TZ=${process.env.SCHEDULE_CRON_TIMEZONE || 'America/Los_Angeles'} ${process.env.SCHEDULE_CRON_EXPRESSION || '0 9 * * *'}`,
+  hackerNewsDigestWorkflow
+);
+
 export const mastra = new Mastra({
   storage: sharedPostgresStorage,
   // Register your workflows here
-  workflows: {},
+  workflows: { hackerNewsDigestWorkflow },
   // Register your agents here
-  agents: {},
+  agents: { digestAgent },
   mcpServers: {
     allTools: new MCPServer({
       name: "allTools",
       version: "1.0.0",
-      tools: {},
+      tools: {
+        fetchHackerNewsRss,
+        fetchArticleContent,
+        sendEmailViaResend,
+      },
     }),
   },
   bundler: {
