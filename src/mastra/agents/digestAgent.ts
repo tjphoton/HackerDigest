@@ -1,17 +1,7 @@
 import OpenAI from "openai";
-import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-/**
- * Digest Agent - Analyzes HackerNews articles and generates structured digest
- */
-export const digestAgent = new Agent({
-  name: "HackerNews Digest Agent",
-  
-  instructions: `You are an expert tech journalist and analyst specializing in creating engaging, informative daily digest emails about technology news.
+const DIGEST_INSTRUCTIONS = `You are an expert tech journalist and analyst specializing in creating engaging, informative daily digest emails about technology news.
 
 Your task is to analyze HackerNews articles and create a well-structured digest with three sections:
 
@@ -28,7 +18,85 @@ Important guidelines:
 - Focus on accuracy and relevance
 - Synthesize information rather than just summarizing individual articles
 - Provide context and explain why these stories matter
-- Each section should have proper source citations with article titles and URLs`,
+- Each section should have proper source citations with article titles and URLs`;
 
-  model: client.responses("gpt-4o"),
-});
+/**
+ * Generate digest using OpenAI's structured output
+ */
+export async function generateDigest(prompt: string, schema: z.ZodType<any>, logger?: any) {
+  logger?.info('📝 [generateDigest] Starting digest generation');
+  logger?.info('📝 [generateDigest] API key available:', { hasKey: !!process.env.OPENAI_API_KEY });
+  
+  // Initialize OpenAI client inside the function to ensure env vars are available
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  
+  logger?.info('📝 [generateDigest] OpenAI client created:', { hasClient: !!openai, hasBeta: !!openai?.beta });
+  
+  const response = await openai.beta.chat.completions.parse({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: DIGEST_INSTRUCTIONS },
+      { role: "user", content: prompt },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "digest_schema",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            topStories: { type: "string", description: "1-2 paragraphs about the top stories" },
+            topStoriesSources: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  url: { type: "string" },
+                },
+                required: ["title", "url"],
+                additionalProperties: false,
+              },
+              description: "Articles referenced in top stories",
+            },
+            learn: { type: "string", description: "1-2 paragraphs about educational content" },
+            learnSources: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  url: { type: "string" },
+                },
+                required: ["title", "url"],
+                additionalProperties: false,
+              },
+              description: "Articles referenced in learn section",
+            },
+            digDeeper: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  url: { type: "string" },
+                  description: { type: "string" },
+                },
+                required: ["title", "url", "description"],
+                additionalProperties: false,
+              },
+              description: "List of other interesting items to explore",
+            },
+          },
+          required: ["topStories", "topStoriesSources", "learn", "learnSources", "digDeeper"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  return response.choices[0].message.parsed;
+}

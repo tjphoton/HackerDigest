@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fetchHackerNewsRss } from "../tools/fetchHackerNewsRss";
 import { fetchArticleContent } from "../tools/fetchArticleContent";
 import { sendEmailViaResend } from "../tools/sendEmailViaResend";
-import { digestAgent } from "../agents/digestAgent";
+import { generateDigest } from "../agents/digestAgent";
 import { RuntimeContext } from "@mastra/core/di";
 
 const runtimeContext = new RuntimeContext();
@@ -206,17 +206,11 @@ Make sure to properly cite sources and create engaging, informative content.`;
       })).describe("List of other interesting items to explore"),
     });
     
-    const response = await digestAgent.generate(
-      [{ role: "user", content: prompt }],
-      {
-        output: digestSchema,
-        maxSteps: 1,
-      }
-    );
+    const result = await generateDigest(prompt, digestSchema, logger);
     
     logger?.info('✅ [Step 3] Digest generated successfully');
     
-    return response.object;
+    return result;
   },
 });
 

@@ -10,7 +10,6 @@ import { z } from "zod";
 import { sharedPostgresStorage } from "./storage";
 import { inngest, inngestServe, registerCronWorkflow } from "./inngest";
 import { hackerNewsDigestWorkflow } from "./workflows/hackerNewsDigestWorkflow";
-import { digestAgent } from "./agents/digestAgent";
 import { fetchHackerNewsRss } from "./tools/fetchHackerNewsRss";
 import { fetchArticleContent } from "./tools/fetchArticleContent";
 import { sendEmailViaResend } from "./tools/sendEmailViaResend";
@@ -68,7 +67,7 @@ export const mastra = new Mastra({
   // Register your workflows here
   workflows: { hackerNewsDigestWorkflow },
   // Register your agents here
-  agents: { digestAgent },
+  agents: {},
   mcpServers: {
     allTools: new MCPServer({
       name: "allTools",
