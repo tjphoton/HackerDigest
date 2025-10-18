@@ -1,5 +1,7 @@
 # Customized HackerNews Digest Workflow
-This project implements a customized news digest generator inspired by HackerNews. The workflow is designed to automatically fetch articles daily and compile a structured email digest summarizing the latest in tech.
+This project implements a customized HackerNews news digest generator using Replit Agent & Automation feature. The total cost of the implementation via Replit Agent 3 is $8.77, mostly on testing and debugging. 
+
+The workflow is designed to automatically fetch articles daily and compile a structured email digest summarizing the latest in tech.
 
 ## Workflow Steps
 1. **Fetch HackerNews RSS Feed**: A daily task scheduled at 9 AM to fetch articles from the HackerNews feed.
