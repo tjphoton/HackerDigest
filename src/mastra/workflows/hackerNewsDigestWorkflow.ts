@@ -87,11 +87,14 @@ const fetchArticlesStep = createStep({
         mastra,
       });
       
+      // Truncate content to 3000 chars to reduce payload size
+      const truncatedContent = result.content.substring(0, 3000);
+      
       articlesWithContent.push({
         title: article.title,
         url: article.url,
         hnUrl: article.hnUrl,
-        content: result.content,
+        content: truncatedContent,
         success: result.success,
       });
       

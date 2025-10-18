@@ -32,71 +32,41 @@ export async function generateDigest(prompt: string, schema: z.ZodType<any>, log
     apiKey: process.env.OPENAI_API_KEY,
   });
   
-  logger?.info('📝 [generateDigest] OpenAI client created:', { hasClient: !!openai, hasBeta: !!openai?.beta });
+  logger?.info('📝 [generateDigest] OpenAI client created');
   
-  const response = await openai.beta.chat.completions.parse({
+  // Use JSON mode instead of beta parse for better compatibility
+  const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
       { role: "system", content: DIGEST_INSTRUCTIONS },
-      { role: "user", content: prompt },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "digest_schema",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            topStories: { type: "string", description: "1-2 paragraphs about the top stories" },
-            topStoriesSources: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  url: { type: "string" },
-                },
-                required: ["title", "url"],
-                additionalProperties: false,
-              },
-              description: "Articles referenced in top stories",
-            },
-            learn: { type: "string", description: "1-2 paragraphs about educational content" },
-            learnSources: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  url: { type: "string" },
-                },
-                required: ["title", "url"],
-                additionalProperties: false,
-              },
-              description: "Articles referenced in learn section",
-            },
-            digDeeper: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  url: { type: "string" },
-                  description: { type: "string" },
-                },
-                required: ["title", "url", "description"],
-                additionalProperties: false,
-              },
-              description: "List of other interesting items to explore",
-            },
-          },
-          required: ["topStories", "topStoriesSources", "learn", "learnSources", "digDeeper"],
-          additionalProperties: false,
-        },
+      { 
+        role: "user", 
+        content: `${prompt}
+
+IMPORTANT: You must respond with a valid JSON object with the following structure:
+{
+  "topStories": "string with 1-2 paragraphs",
+  "topStoriesSources": [{"title": "string", "url": "string"}],
+  "learn": "string with 1-2 paragraphs",
+  "learnSources": [{"title": "string", "url": "string"}],
+  "digDeeper": [{"title": "string", "url": "string", "description": "string"}]
+}`
       },
-    },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.7,
   });
 
-  return response.choices[0].message.parsed;
+  logger?.info('📝 [generateDigest] Received response from OpenAI');
+  
+  const content = response.choices[0].message.content;
+  if (!content) {
+    throw new Error('No content in OpenAI response');
+  }
+  
+  logger?.info('📝 [generateDigest] Parsing JSON response');
+  const parsed = JSON.parse(content);
+  
+  logger?.info('📝 [generateDigest] Digest generated successfully');
+  return parsed;
 }
